@@ -1,0 +1,10 @@
+{
+  "name": "Tab Tab Revolution",
+  "version": "1.1",
+  "description": "It's already open!",
+  "permissions": ["webRequest", "webRequestBlocking", "tabs", "*://*/*"],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "manifest_version": 2
+}
