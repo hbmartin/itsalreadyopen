@@ -1,17 +1,18 @@
 var url_to_tab_id = {};
 
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
-    var url = changeInfo.url;
+    if (!changeInfo.url) { return; }
+    var url = key_maker(changeInfo.url);
     if (url && url.indexOf("chrome:/") == -1) {
         if (!url_to_tab_id[url]) {
-			console.log("NEW url @ " + tabId + " : " + url);
             removeTabById(tabId);
             url_to_tab_id[url] = tabId;
-        } else {
-			console.log("old url @ " + tabId + " : " + url);
-			console.log(" -> " + url_to_tab_id[url]);
+        } else if (tabId != url_to_tab_id[url]) {
             focusTab(url_to_tab_id[url]);
             chrome.tabs.remove(tabId);
+            if (url != changeInfo.url) {
+                chrome.tabs.update(url_to_tab_id[url], {url:changeInfo.url});
+            }
         }
     }
 });
@@ -37,12 +38,24 @@ var removeTabById = function(tabId) {
     }
 };
 
+var populate_tab_map_from_window = function(win) {
+    for (let t of win.tabs) {
+        if (t.url && t.url.indexOf("chrome:/") == -1) {
+            url_to_tab_id[key_maker(t.url)] = t.id;
+        }
+    }
+};
+
+var key_maker = function(url) {
+    return url;
+    // return url.split('#')[0];
+};
+
 chrome.windows.getAll({populate:true, windowTypes:['normal']}, function(windows){
     for (let win of windows) {
-		for (let t of win.tabs) {
-			if (t.url && t.url.indexOf("chrome:/") == -1) {
-				url_to_tab_id[t.url] = t.id;
-			}
-		}
+        populate_tab_map_from_window(win);
     }
 });
+
+chrome.windows.getLastFocused({populate:true, windowTypes:['normal']}, populate_tab_map_from_window);
+
