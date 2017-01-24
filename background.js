@@ -3,21 +3,60 @@
 
 var url_to_tab_id = {};
 
+var checkUpdateTab = function(tabId, url){
+  return function() {
+    chrome.tabs.get(tabId, function (tab){
+      removeTabById(tabId);
+      if (chrome.runtime.lastError) {
+        console.log("DANGER!!!!");
+        console.log(chrome.runtime.lastError.message);
+        return;
+      }
+      console.log(tab ? tab : "NOTAB");
+      if (tab && tab.url && tab.url.indexOf("chrome:/") == -1) {
+        url_to_tab_id[url] = tabId;
+		console.log(url_to_tab_id);
+      }
+    });
+  };
+};
+
+chrome.webRequest.onBeforeRequest.addListener(function(info) {
+      console.log(info);
+      var url = key_maker(info.url);
+      if (url_to_tab_id[url]) {
+        focusTab(url_to_tab_id[url]);
+        chrome.tabs.remove(info.tabId);
+        return { cancel: true };
+      }
+	  console.log("will check: " + info.tabId + " <- " + url);
+      setTimeout(checkUpdateTab(info.tabId, url), 2000);
+      return { cancel: false };
+  },
+  { types: ["main_frame"], urls: ["<all_urls>"] },
+  ["blocking"]
+);
+
+
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
+	console.log(changeInfo);
     if (!changeInfo.url) { return; }
     var url = key_maker(changeInfo.url);
     if (url && url.indexOf("chrome:/") == -1) {
         if (!url_to_tab_id[url]) {
             removeTabById(tabId);
             url_to_tab_id[url] = tabId;
+			console.log("tabs.onUpdated <= PUT");
         } else if (tabId != url_to_tab_id[url]) {
             focusTab(url_to_tab_id[url]);
             chrome.tabs.remove(tabId);
+			console.log("tabs.onUpdated <= REMOVE");
         }
     }
 });
 
 chrome.tabs.onRemoved.addListener(function(tabId, removeInfo) {
+	console.log("chrome.tabs.onRemoved : " + tabId);
     removeTabById(tabId);
 });
 
